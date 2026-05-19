@@ -1,0 +1,46 @@
+# 책추남 불변의 지혜 시리즈 — 도서별 메타데이터 레지스트리
+# 새 책을 추가할 때 이 파일에 항목만 추가하면 코드 수정 없이 빌드 가능
+
+books:
+  over-soul:
+    series: "[책추남 불변의 지혜 시리즈 01]"
+    title: "내 안의 우주"
+    subtitle: "랄프 왈도 에머슨의 영혼을 깨우는 초월주의 에세이"
+    orig_title: "(The Over-Soul)"
+    author: "랄프 왈도 에머슨 (Ralph Waldo Emerson)"
+    translator: "책추남"
+    cover: "images/cover.png"
+    header_text: "내 안의 우주 : 랄프 왈도 에머슨 에세이"
+    input: "input/The-Over-Soul 에머슨 원문.pdf"
+    input_type: "pdf"
+
+  self-reliance:
+    series: "[책추남 불변의 지혜 시리즈 02]"
+    title: "자기 신뢰"
+    subtitle: "랄프 왈도 에머슨의 영혼을 깨우는 초월주의 에세이"
+    orig_title: "(Self-Reliance)"
+    author: "랄프 왈도 에머슨 (Ralph Waldo Emerson)"
+    translator: "책추남"
+    cover: "images/cover_self_reliance.png"
+    header_text: "자기 신뢰 : 랄프 왈도 에머슨 에세이"
+    input: "input/Self_Reliance_Emerson_1908.md"
+    input_type: "md"
+
+# 향후 추가 예시:
+#  compensation:
+#    series: "[책추남 불변의 지혜 시리즈 03]"
+#    title: "보상"
+#    ...
+
+# 공통 설정
+settings:
+  model_translate: "gemini-2.0-flash"
+  model_commentary: "gemini-2.0-flash"
+  model_quality: "gemini-2.0-flash"
+  chunk_max_tokens: 3000
+  quality_threshold: 85
+  max_retries: 3
+  image_style: "cinematic photorealistic, 8K, golden hour, warm tones, nature and spirituality"
+  output_formats:
+    - kmong    # 크몽 전자책 (A5, 모바일 최적화)
+    - bookk    # 부크크 POD (A5, 인쇄용)

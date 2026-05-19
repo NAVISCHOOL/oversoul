@@ -1,0 +1,18 @@
+{
+  "book_id": "self-reliance",
+  "current_stage": 1,
+  "stages": {
+    "1": {
+      "name": "원문 입력 & 청크 분할",
+      "status": "failed",
+      "completed_at": "2026-05-19T15:12:59.321979"
+    }
+  },
+  "checkpoints": {
+    "A": false,
+    "B": false,
+    "C": false
+  },
+  "created_at": "2026-05-19T15:12:59.268692",
+  "updated_at": "2026-05-19T15:12:59.321979"
+}
