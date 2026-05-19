@@ -63,7 +63,9 @@ def get_korean_fonts():
         return download_reg, download_bold
 
 class NumberedCanvas(canvas.Canvas):
-    """지능형 페이지 번호 및 표지 제어를 위한 커스텀 캔버스"""
+    """지능형 페이지 번호 및 도서별 가변 헤더 제어를 위한 커스텀 캔버스"""
+    header_text = "내 안의 우주 : 랄프 왈도 에머슨 에세이"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._saved_page_states = []
@@ -93,18 +95,18 @@ class NumberedCanvas(canvas.Canvas):
         page_text = f"- {self._pageNumber} -"
         self.drawCentredString(self._pagesize[0] / 2.0, 30, page_text)
         
-        # 상단 헤더 (책 제목 단면 인쇄 스타일)
+        # 상단 헤더 (책 제목 단면 인쇄 스타일 - 빌드 중 동적 교체됨)
         self.setStrokeColor(colors.HexColor("#E5E5E5"))
         self.setLineWidth(0.5)
         self.line(40, self._pagesize[1] - 40, self._pagesize[0] - 40, self._pagesize[1] - 40)
-        self.drawString(40, self._pagesize[1] - 35, "내 안의 우주 : 랄프 왈도 에머슨 에세이")
+        self.drawString(40, self._pagesize[1] - 35, self.header_text)
         
         self.restoreState()
 
 def draw_cover_background(canvas_obj, doc):
-    """크몽 전자책 모드에서 첫 페이지에 표지 이미지를 꽉 차게 그립니다."""
+    """크몽 전자책 모드에서 첫 페이지에 표지 이미지를 꽉 차게 그립니다. (동적 경로 반영)"""
     canvas_obj.saveState()
-    cover_path = "images/cover.png"
+    cover_path = getattr(doc, "cover_path", "images/cover.png")
     if os.path.exists(cover_path):
         canvas_obj.drawImage(cover_path, 0, 0, width=doc.pagesize[0], height=doc.pagesize[1])
     canvas_obj.restoreState()
@@ -119,8 +121,8 @@ def parse_inline_markdown(text):
     text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
     return text
 
-def make_title_page(story, mode, pagesize):
-    """우아하고 균형 잡힌 타이틀 페이지를 단일 페이지에 생성합니다."""
+def make_title_page(story, mode, pagesize, config):
+    """우아하고 균형 잡힌 타이틀 페이지를 단일 페이지에 생성합니다. (완벽 동적화)"""
     story.append(Spacer(1, 60 if mode == "kmong" else 30))
     
     series_style = ParagraphStyle(
@@ -131,7 +133,7 @@ def make_title_page(story, mode, pagesize):
         alignment=1,
         textColor=colors.HexColor("#777777")
     )
-    story.append(Paragraph("[책추남 불변의 지혜 시리즈 01]", series_style))
+    story.append(Paragraph(config["series"], series_style))
     story.append(Spacer(1, 25))
     
     title_style = ParagraphStyle(
@@ -142,7 +144,7 @@ def make_title_page(story, mode, pagesize):
         alignment=1,
         textColor=colors.HexColor("#111111")
     )
-    story.append(Paragraph("내 안의 우주", title_style))
+    story.append(Paragraph(config["title"], title_style))
     story.append(Spacer(1, 15))
     
     subtitle_style = ParagraphStyle(
@@ -153,7 +155,7 @@ def make_title_page(story, mode, pagesize):
         alignment=1,
         textColor=colors.HexColor("#555555")
     )
-    story.append(Paragraph("랄프 왈도 에머슨의 영혼을 깨우는 초월주의 에세이", subtitle_style))
+    story.append(Paragraph(config["subtitle"], subtitle_style))
     story.append(Spacer(1, 8))
     
     orig_style = ParagraphStyle(
@@ -164,7 +166,7 @@ def make_title_page(story, mode, pagesize):
         alignment=1,
         textColor=colors.HexColor("#888888")
     )
-    story.append(Paragraph("(The Over-Soul)", orig_style))
+    story.append(Paragraph(config["orig_title"], orig_style))
     story.append(Spacer(1, 120 if mode == "kmong" else 80))
     
     author_style = ParagraphStyle(
@@ -175,12 +177,12 @@ def make_title_page(story, mode, pagesize):
         alignment=1,
         textColor=colors.HexColor("#333333")
     )
-    story.append(Paragraph("<b>원저:</b> 랄프 왈도 에머슨 (Ralph Waldo Emerson)<br/><b>번역 및 해제:</b> 책추남", author_style))
+    story.append(Paragraph(f"<b>원저:</b> {config['author']}<br/><b>번역 및 해제:</b> {config['translator']}", author_style))
     
     story.append(PageBreak())
 
-def make_toc_page(story, mode, pagesize):
-    """도트 리더(Dot Leader)와 우측 정렬 페이지 번호가 포함된 고품격 목차를 조판합니다."""
+def make_toc_page(story, mode, pagesize, config):
+    """도트 리더(Dot Leader)와 우측 정렬 페이지 번호가 포함된 고품격 목차를 조판합니다. (완벽 동적화)"""
     story.append(Spacer(1, 20))
     toc_title_style = ParagraphStyle(
         'TOCTitle',
@@ -192,39 +194,8 @@ def make_toc_page(story, mode, pagesize):
     )
     story.append(Paragraph("📖 목차 (Table of Contents)", toc_title_style))
     
-    # 목차 데이터 세팅 (모드별 검증된 실제 시작 페이지 자동 연동)
-    if mode == "kmong":
-        toc_data = [
-            ["책추남 서문 : 모든 성공학의 뿌리, 그 거대한 샘물", "6"],
-            ["제1부 : 대령(The Over-Soul)의 시작", "10"],
-            ["제2부 : 내 안의 무한한 지혜와 힘", "26"],
-            ["제3부 : 시공간을 초월한 존재", "41"],
-            ["심층 해설 01: 운(運)이 좋아지는 사람의 비밀", "54"],
-            ["심층 해설 02: 에머슨이 동양 고전을 만날 때", "57"],
-            ["심층 해설 03: 비워야 채워진다", "60"],
-            ["심층 해설 04: 책추남의 독서 인생을 바꾼 세 문장", "62"],
-            ["🦋 [책추남의 심층 해제] 에고의 게임에서 진짜 백조로", "64"],
-            ["🌏 [3대 영성 도서 입체 분석] 대령의 현대적 재해석", "66"],
-            ["🚀 [실전 나비 퀘스트] 대령의 주파수를 맞추는 3단계 연습", "68"],
-            ["🦋 맺음말 : 독자 여러분 안의 대령(The Over-Soul)에게", "70"],
-            ["📚 부록 : 책추남 추천 에머슨 읽기 순서", "72"]
-        ]
-    else:
-        toc_data = [
-            ["책추남 서문 : 모든 성공학의 뿌리, 그 거대한 샘물", "5"],
-            ["제1부 : 대령(The Over-Soul)의 시작", "9"],
-            ["제2부 : 내 안의 무한한 지혜와 힘", "24"],
-            ["제3부 : 시공간을 초월한 존재", "39"],
-            ["심층 해설 01: 운(運)이 좋아지는 사람의 비밀", "52"],
-            ["심층 해설 02: 에머슨이 동양 고전을 만날 때", "55"],
-            ["심층 해설 03: 비워야 채워진다", "58"],
-            ["심층 해설 04: 책추남의 독서 인생을 바꾼 세 문장", "60"],
-            ["🦋 [책추남의 심층 해제] 에고의 게임에서 진짜 백조로", "62"],
-            ["🌏 [3대 영성 도서 입체 분석] 대령의 현대적 재해석", "64"],
-            ["🚀 [실전 나비 퀘스트] 대령의 주파수를 맞추는 3단계 연습", "66"],
-            ["🦋 맺음말 : 독자 여러분 안의 대령(The Over-Soul)에게", "68"],
-            ["📚 부록 : 책추남 추천 에머슨 읽기 순서", "70"]
-        ]
+    # 목차 데이터 세팅 (설정 데이터 동적 반영)
+    toc_data = config["toc_data"][mode]
     
     left_margin = 20 * mm
     right_margin = 20 * mm if mode == "kmong" else 15 * mm
@@ -364,7 +335,10 @@ def render_markdown_table(story, table_lines, p_width, mode):
     story.append(t)
     story.append(Spacer(1, 10))
 
-def build_pdf(input_md, output_pdf, mode="kmong"):
+def build_pdf(input_md, output_pdf, mode="kmong", config=None):
+    if config is None:
+        raise ValueError("빌드 파이프라인 구동 시 'config' 딕셔너리가 반드시 전달되어야 합니다.")
+        
     # 한자가 포함된 고해상도 글꼴 세팅
     reg_font, bold_font = get_korean_fonts()
     
@@ -392,7 +366,7 @@ def build_pdf(input_md, output_pdf, mode="kmong"):
             bottomMargin=22 * mm
         )
     else:
-        # 부크크 POD: A5, 여백 차별화 (제본 안쪽 20mm, 바깥쪽 15mm, 상하 22mm로 조정하여 페이지 수 극대화 및 프리미엄 조판 달성)
+        # 부크크 POD: A5, 여백 차별화 (제본 안쪽 20mm, 바깥쪽 15mm, 상하 22mm)
         pagesize = A5
         doc = SimpleDocTemplate(
             output_pdf,
@@ -405,7 +379,11 @@ def build_pdf(input_md, output_pdf, mode="kmong"):
         
     p_width = pagesize[0] - (doc.leftMargin + doc.rightMargin)
     
-    # 텍스트 스타일 정의 (폰트 사이즈 및 행간 미세 조정을 통한 가독성 극대화 및 70+ 페이지 완벽 복원)
+    # 지능형 페이지에 동적 메타 데이터 바인딩
+    doc.cover_path = config["cover_path"]
+    NumberedCanvas.header_text = config["header_text"]
+    
+    # 텍스트 스타일 정의
     korean_style = ParagraphStyle(
         'KoreanStyle',
         fontName='NanumMyeongjo',
@@ -474,11 +452,11 @@ def build_pdf(input_md, output_pdf, mode="kmong"):
     if mode == "kmong":
         story.append(PageBreak())
         
-    # 2. 타이틀 페이지 생성 (1페이지와 3페이지의 결합 해결)
-    make_title_page(story, mode, pagesize)
+    # 2. 타이틀 페이지 생성 (완벽 동적 매핑)
+    make_title_page(story, mode, pagesize, config)
     
-    # 3. 목차 페이지 생성
-    make_toc_page(story, mode, pagesize)
+    # 3. 목차 페이지 생성 (완벽 동적 매핑)
+    make_toc_page(story, mode, pagesize, config)
     
     # 4. 본문 파싱 및 렌더링
     with open(input_md, 'r', encoding='utf-8') as f:
@@ -568,7 +546,7 @@ def build_pdf(input_md, output_pdf, mode="kmong"):
             story.append(Paragraph(parse_inline_markdown(header_text), header2_style))
             story.append(Spacer(1, 6))
             
-        # 이미지 태그 처리 ( aspect-ratio 기반 가로세로 정밀 제한 및 가운데 정렬 )
+        # 이미지 태그 처리
         elif raw_line.startswith("!["):
             img_match = re.match(r'!\[.*?\]\((.*?)\)', raw_line)
             if img_match:
@@ -663,26 +641,104 @@ def build_pdf(input_md, output_pdf, mode="kmong"):
     print(f"[{mode.upper()}] PDF 조판 완료: {output_pdf}")
 
 if __name__ == "__main__":
-    # 책추남 불변의 지혜 시리즈 도서 목록 정의
+    # 책추남 불변의 지혜 시리즈 도서별 동적 컴파일 설정 대장
     books = [
         {
             "src": "versions/final_content_v4.md",
             "dest": "final_content.md",
             "pod_pdf": "Emerson_Universe_Bookk_POD.pdf",
             "ebook_pdf": "Emerson_Universe_Kmong_Ebook.pdf",
-            "title": "시리즈 01: 내 안의 우주"
+            "title": "내 안의 우주",
+            "series": "[책추남 불변의 지혜 시리즈 01]",
+            "subtitle": "랄프 왈도 에머슨의 영혼을 깨우는 초월주의 에세이",
+            "orig_title": "(The Over-Soul)",
+            "author": "랄프 왈도 에머슨 (Ralph Waldo Emerson)",
+            "translator": "책추남",
+            "cover_path": "images/cover.png",
+            "header_text": "내 안의 우주 : 랄프 왈도 에머슨 에세이",
+            "toc_data": {
+                "kmong": [
+                    ["책추남 서문 : 모든 성공학의 뿌리, 그 거대한 샘물", "6"],
+                    ["제1부 : 대령(The Over-Soul)의 시작", "10"],
+                    ["제2부 : 내 안의 무한한 지혜와 힘", "26"],
+                    ["제3부 : 시공간을 초월한 존재", "41"],
+                    ["심층 해설 01: 운(運)이 좋아지는 사람의 비밀", "55"],
+                    ["심층 해설 02: 에머슨이 동양 고전을 만날 때", "58"],
+                    ["심층 해설 03: 비워야 채워진다", "61"],
+                    ["심층 해설 04: 책추남의 독서 인생을 바꾼 세 문장", "63"],
+                    ["🦋 [책추남의 심층 해제] 에고의 게임에서 진짜 백조로", "65"],
+                    ["🌏 [3대 영성 도서 입체 분석] 대령의 현대적 재해석", "67"],
+                    ["🚀 [실전 나비 퀘스트] 대령의 주파수를 맞추는 3단계 연습", "69"],
+                    ["🦋 맺음말 : 독자 여러분 안의 대령(The Over-Soul)에게", "71"],
+                    ["📚 부록 : 책추남 추천 에머슨 읽기 순서", "73"]
+                ],
+                "bookk": [
+                    ["책추남 서문 : 모든 성공학의 뿌리, 그 거대한 샘물", "5"],
+                    ["제1부 : 대령(The Over-Soul)의 시작", "9"],
+                    ["제2부 : 내 안의 무한한 지혜와 힘", "24"],
+                    ["제3부 : 시공간을 초월한 존재", "39"],
+                    ["심층 해설 01: 운(運)이 좋아지는 사람의 비밀", "52"],
+                    ["심층 해설 02: 에머슨이 동양 고전을 만날 때", "55"],
+                    ["심층 해설 03: 비워야 채워진다", "58"],
+                    ["심층 해설 04: 책추남의 독서 인생을 바꾼 세 문장", "60"],
+                    ["🦋 [책추남의 심층 해제] 에고의 게임에서 진짜 백조로", "62"],
+                    ["🌏 [3대 영성 도서 입체 분석] 대령의 현대적 재해석", "64"],
+                    ["🚀 [실전 나비 퀘스트] 대령의 주파수를 맞추는 3단계 연습", "66"],
+                    ["🦋 맺음말 : 독자 여러분 안의 대령(The Over-Soul)에게", "68"],
+                    ["📚 부록 : 책추남 추천 에머슨 읽기 순서", "70"]
+                ]
+            }
         },
         {
             "src": "versions/self_reliance_v1.md",
             "dest": "final_self_reliance.md",
             "pod_pdf": "Emerson_SelfReliance_Bookk_POD.pdf",
             "ebook_pdf": "Emerson_SelfReliance_Kmong_Ebook.pdf",
-            "title": "시리즈 02: 자기 신뢰"
+            "title": "자기 신뢰",
+            "series": "[책추남 불변의 지혜 시리즈 02]",
+            "subtitle": "랄프 왈도 에머슨의 영혼을 깨우는 초월주의 에세이",
+            "orig_title": "(Self-Reliance)",
+            "author": "랄프 왈도 에머슨 (Ralph Waldo Emerson)",
+            "translator": "책추남",
+            "cover_path": "images/cover_self_reliance.png",
+            "header_text": "자기 신뢰 : 랄프 왈도 에머슨 에세이",
+            "toc_data": {
+                "kmong": [
+                    ["책추남 서문 : 내면의 거인을 깨우는 단 하나의 주문, \"나 자신을 믿어라\"", "6"],
+                    ["제1부: 다수와 관습에서 벗어나라 (Nonconformity)", "9"],
+                    ["제2부: 내면의 근원을 신뢰하라 (Intuition & Spontaneity)", "17"],
+                    ["제3부: 세상을 향해 나를 선언하라 (Application)", "23"],
+                    ["심층 해설 01: 운(運)이 좋아지는 사람의 비밀", "29"],
+                    ["심층 해설 02: 에머슨이 동양 고전을 만날 때", "32"],
+                    ["심층 해설 03: 비워야 비로소 채워진다", "35"],
+                    ["심층 해설 04: 책추남의 독서 인생을 완전히 뒤바꾼 세 문장", "38"],
+                    ["🦋 [책추남의 심층 해제] 에고의 가짜 게임에서 진짜 백조로", "40"],
+                    ["🌏 [3대 영성 도서 입체 분석] 자기 신뢰의 현대적 재해석", "43"],
+                    ["🚀 [실전 나비 퀘스트] 자기 신뢰의 주파수를 맞추는 3단계 실천 연습", "46"],
+                    ["🦋 맺음말 : 독자 여러분 안의 찬란한 우주적 백조에게", "48"],
+                    ["📚 부록 : 책추남 추천 에머슨 지혜의 지도 읽기 순서", "51"]
+                ],
+                "bookk": [
+                    ["책추남 서문 : 내면의 거인을 깨우는 단 하나의 주문, \"나 자신을 믿어라\"", "5"],
+                    ["제1부: 다수와 관습에서 벗어나라 (Nonconformity)", "8"],
+                    ["제2부: 내면의 근원을 신뢰하라 (Intuition & Spontaneity)", "16"],
+                    ["제3부: 세상을 향해 나를 선언하라 (Application)", "22"],
+                    ["심층 해설 01: 운(運)이 좋아지는 사람의 비밀", "27"],
+                    ["심층 해설 02: 에머슨이 동양 고전을 만날 때", "30"],
+                    ["심층 해설 03: 비워야 비로소 채워진다", "32"],
+                    ["심층 해설 04: 책추남의 독서 인생을 완전히 뒤바꾼 세 문장", "35"],
+                    ["🦋 [책추남의 심층 해제] 에고의 가짜 게임에서 진짜 백조로", "38"],
+                    ["🌏 [3대 영성 도서 입체 분석] 자기 신뢰의 현대적 재해석", "41"],
+                    ["🚀 [실전 나비 퀘스트] 자기 신뢰의 주파수를 맞추는 3단계 실천 연습", "44"],
+                    ["🦋 맺음말 : 독자 여러분 안의 찬란한 우주적 백조에게", "46"],
+                    ["📚 부록 : 책추남 추천 에머슨 지혜의 지도 읽기 순서", "49"]
+                ]
+            }
         }
     ]
     
     print("=" * 60)
-    print("   [나비스쿨] 책추남 불변의 지혜 시리즈 PDF 자동 빌드 파이프라인")
+    print("   [나비스쿨] 책추남 불변의 지혜 시리즈 PDF 자동 빌드 파이프라인 (v2.0.0)")
     print("=" * 60)
     
     for book in books:
@@ -690,7 +746,7 @@ if __name__ == "__main__":
         active_dest = book["dest"]
         
         if os.path.exists(master_src):
-            print(f"\n* {book['title']} 빌드 시작...")
+            print(f"\n* {book['series']} {book['title']} 빌드 시작...")
             print(f"   마스터 마크다운 원고 동기화 중: {master_src} -> {active_dest}")
             with open(master_src, 'r', encoding='utf-8') as src_f:
                 content = src_f.read()
@@ -698,9 +754,9 @@ if __name__ == "__main__":
                 dest_f.write(content)
             print("   동기화 성공.")
             
-            # 두 모드(부크크 POD, 크몽 전자책)로 각각 고품격 PDF 생성
-            build_pdf(active_dest, book["pod_pdf"], mode="bookk")
-            build_pdf(active_dest, book["ebook_pdf"], mode="kmong")
+            # 두 모드(부크크 POD, 크몽 전자책)로 각각 고품격 PDF 생성 (config 설정 주입)
+            build_pdf(active_dest, book["pod_pdf"], mode="bookk", config=book)
+            build_pdf(active_dest, book["ebook_pdf"], mode="kmong", config=book)
         else:
             print(f"\n[INFO] {book['title']} 소스 파일({master_src})이 존재하지 않아 건너뜁니다.")
             
