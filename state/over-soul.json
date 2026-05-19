@@ -1,11 +1,26 @@
 {
   "book_id": "over-soul",
-  "current_stage": 1,
+  "current_stage": 2,
   "stages": {
     "1": {
       "name": "원문 입력 & 청크 분할",
       "status": "done",
-      "completed_at": "2026-05-19T15:13:21.516710"
+      "completed_at": "2026-05-19T15:27:00.289156",
+      "chunks": {
+        "chunk_01": {
+          "hash": "4edb666f",
+          "tokens": 7207,
+          "changed": true
+        }
+      },
+      "total_chunks": 1,
+      "elapsed_seconds": 0.2
+    },
+    "2": {
+      "name": "책추남 스타일 번역",
+      "status": "done",
+      "completed_at": "2026-05-19T15:27:04.706632",
+      "elapsed_seconds": 4.4
     }
   },
   "checkpoints": {
@@ -14,5 +29,5 @@
     "C": false
   },
   "created_at": "2026-05-19T15:13:21.241778",
-  "updated_at": "2026-05-19T15:13:21.516710"
+  "updated_at": "2026-05-19T15:27:04.713760"
 }

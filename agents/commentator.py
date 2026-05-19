@@ -80,9 +80,32 @@ def run(book, settings, state):
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel(model_name)
     
-    # 번역본이 너무 길면 앞부분 4000자만 전송 (토큰 절약)
-    input_text = translated_text[:8000] if len(translated_text) > 8000 else translated_text
-    prompt = prompt_template.replace("{translated_text}", input_text)
+    # [T1 수정] 전체 번역본의 구조를 전달하되 토큰을 절약하는 전략:
+    # - 전체 헤더(##, ###) 목록을 추출하여 구조를 파악
+    # - 앞부분(서론), 중반부(핵심), 끝부분(결론)을 각각 발췌
+    import re
+    headers = re.findall(r'^#{1,3}\s+.+', translated_text, re.MULTILINE)
+    header_list = "\n".join(headers)
+    
+    text_len = len(translated_text)
+    front = translated_text[:3000]     # 서론부
+    middle_start = text_len // 3
+    middle = translated_text[middle_start:middle_start+3000]  # 중반부
+    back = translated_text[-3000:]     # 결론부
+    
+    context_text = f"""[전체 구조 (헤더 목록)]
+{header_list}
+
+[서론부 발췌]
+{front}
+
+[중반부 발췌]
+{middle}
+
+[결론부 발췌]
+{back}"""
+    
+    prompt = prompt_template.replace("{translated_text}", context_text)
     
     print("  책추남 해설 생성 중...")
     response = model.generate_content(prompt)

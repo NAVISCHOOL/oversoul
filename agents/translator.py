@@ -19,18 +19,9 @@ def load_prompt_template():
     with open(prompt_path, 'r', encoding='utf-8') as f:
         return f.read()
 
-def translate_chunk(chunk_text, model_name, prompt_template):
+def translate_chunk(chunk_text, model, prompt_template):
     """단일 청크를 번역합니다."""
     prompt = prompt_template.replace("{chunk_text}", chunk_text)
-    
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("  [안내] GEMINI_API_KEY가 설정되지 않았습니다.")
-        print("         이 단계는 Antigravity 에이전트가 대화형으로 수행합니다.")
-        return None
-    
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(model_name)
     response = model.generate_content(prompt)
     return response.text
 
@@ -46,6 +37,22 @@ def run(book, settings, state):
     
     # 프롬프트 템플릿 로드
     prompt_template = load_prompt_template()
+    
+    # [H3 수정] 도서 컨텍스트를 프롬프트에 주입
+    prompt_template = prompt_template.replace("{book_title}", book.get("title", ""))
+    prompt_template = prompt_template.replace("{book_author}", book.get("author", ""))
+    prompt_template = prompt_template.replace("{orig_title}", book.get("orig_title", ""))
+    
+    # [T2 수정] API 초기화를 1회만 실행
+    api_key = os.getenv("GEMINI_API_KEY")
+    model = None
+    if api_key:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(model_name)
+    else:
+        print("  [안내] GEMINI_API_KEY가 설정되지 않았습니다.")
+        print("         이 단계는 Antigravity 에이전트가 대화형으로 수행합니다.")
+        return True
     
     # 청크 매니페스트 로드
     chunk_info = state.get("stages", {}).get("1", {}).get("chunks", {})
@@ -75,12 +82,12 @@ def run(book, settings, state):
         for attempt in range(1, max_retries + 1):
             print(f"    [{chunk_id}] 번역 중... (시도 {attempt}/{max_retries})")
             
-            result = translate_chunk(chunk_text, model_name, prompt_template)
+            result = translate_chunk(chunk_text, model, prompt_template)
             
             if result is None:
-                # API 키 없음 → 수동 모드 표시
-                print(f"    [{chunk_id}] 수동 번역 필요 (API 키 미설정)")
-                break
+                print(f"    [{chunk_id}] 번역 실패 → 재시도")
+                time.sleep(2)
+                continue
             
             # 간단한 품질 검증: 결과가 너무 짧으면 재시도
             if len(result) < len(chunk_text) * 0.3:

@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# 임시 파일
+*.tmp
+state/*.tmp
+
+# PDF 산출물 (용량이 크므로 Git 추적 제외, 필요 시 수동 add)
+output/*.pdf
+
+# OS 파일
+.DS_Store
+Thumbs.db

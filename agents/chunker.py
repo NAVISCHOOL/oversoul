@@ -28,6 +28,16 @@ def extract_text_from_md(md_path):
     with open(md_path, 'r', encoding='utf-8') as f:
         return f.read()
 
+def estimate_tokens(text):
+    """[R2 수정] 한글+영문 혼합 텍스트의 토큰 수를 정밀 추정합니다."""
+    # 한글 문자 수 (1자 ≈ 2토큰)
+    korean_chars = len(re.findall(r'[가-힣]', text))
+    # 영문 단어 수 (1단어 ≈ 1.3토큰)
+    english_words = len(re.findall(r'[a-zA-Z]+', text))
+    # 숫자, 특수문자 등
+    other = len(re.findall(r'[0-9]+', text))
+    return int(korean_chars * 2 + english_words * 1.3 + other)
+
 def split_into_chunks(text, max_tokens=3000):
     """텍스트를 의미 단위로 분할합니다."""
     # 마크다운 헤더(## 또는 ###) 기준으로 1차 분할
@@ -41,14 +51,14 @@ def split_into_chunks(text, max_tokens=3000):
         if not section:
             continue
         
-        # 대략적인 토큰 수 추정 (한글 1자 ≈ 2토큰, 영문 1단어 ≈ 1.3토큰)
-        estimated_tokens = len(section.split()) * 1.3
+        # [R2] 한글 인식하는 정밀 토큰 추정
+        estimated_tokens = estimate_tokens(section)
         
         if estimated_tokens > max_tokens and current_chunk:
             # 현재 청크를 저장하고 새 청크 시작
             chunks.append(current_chunk.strip())
             current_chunk = section
-        elif len((current_chunk + "\n\n" + section).split()) * 1.3 > max_tokens:
+        elif estimate_tokens(current_chunk + "\n\n" + section) > max_tokens:
             # 합치면 초과하므로 현재 청크 저장
             if current_chunk:
                 chunks.append(current_chunk.strip())
