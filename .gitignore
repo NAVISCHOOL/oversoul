@@ -1,0 +1,28 @@
+# ============================================
+# 📚 Oversoul 전자책 프로젝트 .gitignore
+# ============================================
+
+# 빌드 산출물 (python pdf_builder.py로 언제든 재생성 가능)
+*.pdf
+
+# 폰트 파일 (pdf_builder.py가 자동 다운로드하거나 시스템 폰트 사용)
+*.ttf
+fonts/
+
+# 일회성 디버깅/탐색 스크립트
+scratch/
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+
+# 번역기 상태 파일
+state.json
+
+# OS 생성 파일
+Thumbs.db
+.DS_Store
+
+# 임시 파일
+temp_*.txt
