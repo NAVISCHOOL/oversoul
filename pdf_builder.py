@@ -663,20 +663,47 @@ def build_pdf(input_md, output_pdf, mode="kmong"):
     print(f"[{mode.upper()}] PDF 조판 완료: {output_pdf}")
 
 if __name__ == "__main__":
-    # 마스터 마크다운 원고를 동기화하여 빌드 준비
-    master_src = "versions/final_content_v4.md"
-    active_dest = "final_content.md"
+    # 책추남 불변의 지혜 시리즈 도서 목록 정의
+    books = [
+        {
+            "src": "versions/final_content_v4.md",
+            "dest": "final_content.md",
+            "pod_pdf": "Emerson_Universe_Bookk_POD.pdf",
+            "ebook_pdf": "Emerson_Universe_Kmong_Ebook.pdf",
+            "title": "시리즈 01: 내 안의 우주"
+        },
+        {
+            "src": "versions/self_reliance_v1.md",
+            "dest": "final_self_reliance.md",
+            "pod_pdf": "Emerson_SelfReliance_Bookk_POD.pdf",
+            "ebook_pdf": "Emerson_SelfReliance_Kmong_Ebook.pdf",
+            "title": "시리즈 02: 자기 신뢰"
+        }
+    ]
     
-    if os.path.exists(master_src):
-        print(f"마스터 마크다운 원고 동기화 중: {master_src} -> {active_dest}")
-        with open(master_src, 'r', encoding='utf-8') as src_f:
-            content = src_f.read()
-        with open(active_dest, 'w', encoding='utf-8') as dest_f:
-            dest_f.write(content)
-        print("동기화 성공.")
-    else:
-        print("경고: 마스터 마크다운 원고를 찾을 수 없습니다. 기존 final_content.md로 조판을 시도합니다.")
+    print("=" * 60)
+    print("   [나비스쿨] 책추남 불변의 지혜 시리즈 PDF 자동 빌드 파이프라인")
+    print("=" * 60)
+    
+    for book in books:
+        master_src = book["src"]
+        active_dest = book["dest"]
         
-    # 두 모드(부크크 POD, 크몽 전자책)로 각각 고품격 PDF 생성
-    build_pdf(active_dest, "Emerson_Universe_Bookk_POD.pdf", mode="bookk")
-    build_pdf(active_dest, "Emerson_Universe_Kmong_Ebook.pdf", mode="kmong")
+        if os.path.exists(master_src):
+            print(f"\n* {book['title']} 빌드 시작...")
+            print(f"   마스터 마크다운 원고 동기화 중: {master_src} -> {active_dest}")
+            with open(master_src, 'r', encoding='utf-8') as src_f:
+                content = src_f.read()
+            with open(active_dest, 'w', encoding='utf-8') as dest_f:
+                dest_f.write(content)
+            print("   동기화 성공.")
+            
+            # 두 모드(부크크 POD, 크몽 전자책)로 각각 고품격 PDF 생성
+            build_pdf(active_dest, book["pod_pdf"], mode="bookk")
+            build_pdf(active_dest, book["ebook_pdf"], mode="kmong")
+        else:
+            print(f"\n[INFO] {book['title']} 소스 파일({master_src})이 존재하지 않아 건너뜁니다.")
+            
+    print("\n" + "=" * 60)
+    print("   모든 도서 빌드 공정 완료.")
+    print("=" * 60)

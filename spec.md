@@ -9,12 +9,11 @@
 
 | 항목 | 내용 |
 |------|------|
-| **프로젝트명** | 내 안의 우주 : 랄프 왈도 에머슨의 영혼을 깨우는 초월주의 에세이 |
-| **원제** | The Over-Soul (1841) |
+| **시리즈명** | 책추남 불변의 지혜 시리즈 (나비스쿨) |
+| **시리즈 01** | 내 안의 우주 (원제: The Over-Soul, 1841) |
+| **시리즈 02** | 자기 신뢰 (원제: Self-Reliance, 1841) |
 | **저자** | 랄프 왈도 에머슨 (Ralph Waldo Emerson) |
 | **번역/해제** | 책추남 (책추남TV) |
-| **출판사** | 나비스쿨 |
-| **시리즈** | 책추남 불변의 지혜 시리즈 01 |
 | **타겟 독자** | 자기계발·영성 서적에 관심 있는 20~50대 한국인 독자 |
 | **출판 채널** | 크몽 전자책 (A5 디지털) + 부크크 POD 종이책 (A5 인쇄) |
 
@@ -55,12 +54,14 @@ oversoul/
 ## 3. 빌드 방법
 
 ```bash
-# 크몽 전자책 + 부크크 종이책 PDF 동시 빌드
+# 전체 시리즈(01권 내 안의 우주, 02권 자기 신뢰) 크몽 전자책 + 부크크 종이책 PDF 일괄 자동 빌드
 python pdf_builder.py
 ```
 
-- `versions/final_content_v4.md` → `final_content.md`로 자동 동기화 후 빌드
-- 산출물: `Emerson_Universe_Kmong_Ebook.pdf`, `Emerson_Universe_Bookk_POD.pdf`
+- **시리즈 01 (내 안의 우주):** `versions/final_content_v4.md` → `final_content.md`로 동기화 후 빌드
+  - 산출물: `Emerson_Universe_Kmong_Ebook.pdf`, `Emerson_Universe_Bookk_POD.pdf`
+- **시리즈 02 (자기 신뢰):** `versions/self_reliance_v1.md` → `final_self_reliance.md`로 동기화 후 빌드
+  - 산출물: `Emerson_SelfReliance_Kmong_Ebook.pdf`, `Emerson_SelfReliance_Bookk_POD.pdf`
 
 ---
 
