@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Over-Soul 원고 편집기</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#1a1a2e;--surface:#16213e;--card:#0f3460;
+  --text:#e8e8e8;--muted:#8892b0;--accent:#e94560;
+  --green:#4ecca3;--border:#233554;--highlight:#1a3a5c;
+}
+html,body{height:100%;font-family:'Pretendard','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text)}
+
+.header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);
+  height:52px;
+}
+.header h1{font-size:16px;font-weight:700;color:var(--green)}
+.header .status{font-size:12px;color:var(--muted)}
+.header .status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.header .status .dot.saved{background:var(--green)}
+.header .status .dot.saving{background:#f0c040}
+.header .status .dot.error{background:var(--accent)}
+
+.main{display:flex;height:calc(100vh - 52px)}
+
+/* LEFT: Chat Prompt */
+.left{
+  width:380px;min-width:300px;
+  display:flex;flex-direction:column;
+  background:var(--surface);border-right:1px solid var(--border);
+}
+.chat-log{
+  flex:1;overflow-y:auto;padding:16px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.msg{padding:10px 14px;border-radius:12px;max-width:95%;font-size:14px;line-height:1.6;word-break:break-word}
+.msg.system{background:var(--card);color:var(--muted);align-self:center;text-align:center;font-size:12px;border-radius:8px}
+.msg.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg.assistant{background:var(--card);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
+
+.chat-input-area{
+  padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;
+}
+.chat-input-area textarea{
+  flex:1;resize:none;border:1px solid var(--border);border-radius:10px;
+  background:var(--bg);color:var(--text);padding:10px 14px;font-size:14px;
+  font-family:inherit;outline:none;height:80px;
+}
+.chat-input-area textarea:focus{border-color:var(--green)}
+.chat-input-area button{
+  width:60px;border:none;border-radius:10px;
+  background:var(--green);color:var(--bg);font-weight:700;font-size:14px;cursor:pointer;
+}
+.chat-input-area button:hover{opacity:.85}
+.chat-input-area button:disabled{opacity:.4;cursor:not-allowed}
+
+/* Resize handle */
+.resize-handle{
+  width:5px;cursor:col-resize;background:var(--border);
+  transition:background .2s;
+}
+.resize-handle:hover,.resize-handle.active{background:var(--accent)}
+
+/* RIGHT: Editor */
+.right{
+  flex:1;display:flex;flex-direction:column;
+}
+.toolbar{
+  display:flex;align-items:center;gap:8px;padding:8px 16px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  font-size:13px;color:var(--muted);
+}
+.toolbar button{
+  padding:4px 12px;border:1px solid var(--border);border-radius:6px;
+  background:transparent;color:var(--text);font-size:12px;cursor:pointer;
+}
+.toolbar button:hover{background:var(--card)}
+.toolbar button.active{background:var(--card);border-color:var(--green);color:var(--green)}
+.toolbar .sep{width:1px;height:20px;background:var(--border)}
+.toolbar .info{margin-left:auto}
+
+.editor-wrap{flex:1;overflow:hidden;display:flex}
+.editor-wrap textarea{
+  flex:1;resize:none;border:none;outline:none;
+  background:var(--bg);color:var(--text);
+  padding:24px 32px;font-size:15px;line-height:1.9;
+  font-family:'Noto Serif KR','Batang',serif;
+  tab-size:2;
+}
+.editor-wrap .preview{
+  flex:1;overflow-y:auto;padding:24px 32px;
+  font-family:'Noto Serif KR','Batang',serif;
+  font-size:15px;line-height:1.9;display:none;
+}
+.editor-wrap .preview h1{font-size:22px;margin:20px 0 10px;color:var(--green)}
+.editor-wrap .preview h2{font-size:18px;margin:18px 0 8px;color:var(--green)}
+.editor-wrap .preview h3{font-size:16px;margin:14px 0 6px;color:var(--accent)}
+.editor-wrap .preview p{margin:8px 0}
+.editor-wrap .preview blockquote{border-left:3px solid var(--accent);padding-left:16px;color:var(--muted);margin:10px 0}
+.editor-wrap .preview strong{color:#fff}
+.editor-wrap .preview em{color:var(--muted)}
+.editor-wrap .preview hr{border:none;border-top:1px solid var(--border);margin:20px 0}
+.editor-wrap .preview img{max-width:100%;border-radius:8px;margin:12px 0}
+
+/* Find & Replace */
+.find-bar{
+  display:none;padding:8px 16px;background:var(--surface);
+  border-bottom:1px solid var(--border);gap:8px;align-items:center;
+}
+.find-bar.open{display:flex;flex-wrap:wrap}
+.find-bar input{
+  padding:6px 10px;border:1px solid var(--border);border-radius:6px;
+  background:var(--bg);color:var(--text);font-size:13px;outline:none;flex:1;min-width:120px;
+}
+.find-bar input:focus{border-color:var(--green)}
+.find-bar button{
+  padding:4px 10px;border:1px solid var(--border);border-radius:6px;
+  background:transparent;color:var(--text);font-size:12px;cursor:pointer;
+}
+.find-bar button.primary{background:var(--green);color:var(--bg);border-color:var(--green)}
+.find-bar span{font-size:12px;color:var(--muted)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+@media(max-width:768px){
+  .main{flex-direction:column}
+  .left{width:100%;height:40vh;min-width:unset}
+  .resize-handle{display:none}
+  .right{height:60vh}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Over-Soul 원고 편집기</h1>
+  <div class="status">
+    <span class="dot saved" id="statusDot"></span>
+    <span id="statusText">저장됨</span>
+    &nbsp;|&nbsp;
+    <span id="charCount">0자</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="left" id="leftPanel">
+    <div class="chat-log" id="chatLog">
+      <div class="msg system">프롬프트로 원고를 수정할 수 있습니다.<br>예: "제1부에서 '초라한'을 '초라하다'로 수정해줘"<br>"제2부 끝에 다음 문단을 추가해줘: ..."</div>
+    </div>
+    <div class="chat-input-area">
+      <textarea id="chatInput" placeholder="수정 명령을 입력하세요..." rows="3"></textarea>
+      <button id="chatSend" onclick="handleChat()">전송</button>
+    </div>
+  </div>
+
+  <div class="resize-handle" id="resizeHandle"></div>
+
+  <div class="right">
+    <div class="toolbar">
+      <button id="btnEdit" class="active" onclick="toggleMode('edit')">편집</button>
+      <button id="btnPreview" onclick="toggleMode('preview')">미리보기</button>
+      <div class="sep"></div>
+      <button onclick="toggleFind()">찾기/바꾸기 (Ctrl+H)</button>
+      <button onclick="undoAction()">실행취소</button>
+      <div class="info" id="lineInfo">줄 1, 열 1</div>
+    </div>
+    <div class="find-bar" id="findBar">
+      <input id="findInput" placeholder="찾기..." oninput="doFind()">
+      <span id="findCount"></span>
+      <input id="replaceInput" placeholder="바꾸기...">
+      <button onclick="doReplace()">바꾸기</button>
+      <button class="primary" onclick="doReplaceAll()">모두 바꾸기</button>
+    </div>
+    <div class="editor-wrap">
+      <textarea id="editor" spellcheck="false"></textarea>
+      <div class="preview" id="preview"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const editor = document.getElementById('editor');
+const preview = document.getElementById('preview');
+const chatLog = document.getElementById('chatLog');
+const chatInput = document.getElementById('chatInput');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const charCount = document.getElementById('charCount');
+const lineInfo = document.getElementById('lineInfo');
+const findBar = document.getElementById('findBar');
+const findInput = document.getElementById('findInput');
+const replaceInput = document.getElementById('replaceInput');
+const findCount = document.getElementById('findCount');
+
+let saveTimer = null;
+let lastHash = '';
+let pollTimer = null;
+let undoStack = [];
+let mode = 'edit';
+
+// Load content
+async function loadContent() {
+  const res = await fetch('/api/content');
+  const data = await res.json();
+  editor.value = data.content;
+  lastHash = data.hash;
+  updateCounts();
+  if (mode === 'preview') renderPreview();
+}
+
+// Save content
+async function saveContent() {
+  setStatus('saving');
+  try {
+    const res = await fetch('/api/content', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({content: editor.value})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      lastHash = data.hash;
+      setStatus('saved');
+    }
+  } catch(e) {
+    setStatus('error');
+  }
+}
+
+function setStatus(s) {
+  statusDot.className = 'dot ' + s;
+  statusText.textContent = s === 'saved' ? '저장됨' : s === 'saving' ? '저장 중...' : '오류';
+}
+
+function updateCounts() {
+  const text = editor.value;
+  const chars = text.replace(/\s/g, '').length;
+  charCount.textContent = chars.toLocaleString() + '자';
+}
+
+function updateLineInfo() {
+  const pos = editor.selectionStart;
+  const lines = editor.value.substring(0, pos).split('\n');
+  lineInfo.textContent = `줄 ${lines.length}, 열 ${lines[lines.length-1].length + 1}`;
+}
+
+// Auto-save on edit
+editor.addEventListener('input', () => {
+  clearTimeout(saveTimer);
+  setStatus('saving');
+  updateCounts();
+  saveTimer = setTimeout(saveContent, 1500);
+  if (mode === 'preview') renderPreview();
+});
+
+editor.addEventListener('click', updateLineInfo);
+editor.addEventListener('keyup', updateLineInfo);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+    e.preventDefault();
+    toggleFind();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    clearTimeout(saveTimer);
+    saveContent();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.target.matches('textarea#editor')) {
+    e.preventDefault();
+    undoAction();
+  }
+  if (e.key === 'Enter' && !e.shiftKey && e.target === chatInput) {
+    e.preventDefault();
+    handleChat();
+  }
+});
+
+// Mode toggle
+function toggleMode(m) {
+  mode = m;
+  document.getElementById('btnEdit').classList.toggle('active', m === 'edit');
+  document.getElementById('btnPreview').classList.toggle('active', m === 'preview');
+  editor.style.display = m === 'edit' ? '' : 'none';
+  preview.style.display = m === 'preview' ? '' : 'none';
+  if (m === 'preview') renderPreview();
+}
+
+function renderPreview() {
+  let md = editor.value;
+  md = md.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+  md = md.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+  md = md.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+  md = md.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  md = md.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  md = md.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
+  md = md.replace(/^---$/gm, '<hr>');
+  md = md.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">');
+  md = md.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
+  md = md.replace(/\n\n/g, '</p><p>');
+  md = '<p>' + md + '</p>';
+  preview.innerHTML = md;
+}
+
+// Find & Replace
+function toggleFind() {
+  findBar.classList.toggle('open');
+  if (findBar.classList.contains('open')) findInput.focus();
+}
+
+function doFind() {
+  const term = findInput.value;
+  if (!term) { findCount.textContent = ''; return; }
+  const matches = (editor.value.match(new RegExp(escRe(term), 'g')) || []).length;
+  findCount.textContent = matches + '건';
+}
+
+function doReplace() {
+  const old = findInput.value;
+  const rep = replaceInput.value;
+  if (!old) return;
+  const content = editor.value;
+  const idx = content.indexOf(old);
+  if (idx === -1) return;
+  pushUndo();
+  editor.value = content.substring(0, idx) + rep + content.substring(idx + old.length);
+  triggerSave();
+  doFind();
+}
+
+function doReplaceAll() {
+  const old = findInput.value;
+  const rep = replaceInput.value;
+  if (!old) return;
+  pushUndo();
+  editor.value = editor.value.split(old).join(rep);
+  triggerSave();
+  doFind();
+}
+
+function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+function triggerSave() {
+  clearTimeout(saveTimer);
+  setStatus('saving');
+  updateCounts();
+  saveTimer = setTimeout(saveContent, 500);
+  if (mode === 'preview') renderPreview();
+}
+
+// Undo
+function pushUndo() {
+  undoStack.push(editor.value);
+  if (undoStack.length > 30) undoStack.shift();
+}
+
+function undoAction() {
+  if (!undoStack.length) return;
+  editor.value = undoStack.pop();
+  triggerSave();
+}
+
+// Chat prompt handler
+function addMsg(role, text) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  d.textContent = text;
+  chatLog.appendChild(d);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+async function handleChat() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatInput.value = '';
+  addMsg('user', text);
+  document.getElementById('chatSend').disabled = true;
+
+  try {
+    const cmd = parseCommand(text);
+    if (cmd) {
+      pushUndo();
+      if (cmd.type === 'replace') {
+        const res = await fetch('/api/patch', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({old: cmd.old, new: cmd.new})
+        });
+        const data = await res.json();
+        if (data.ok) {
+          editor.value = data.content;
+          lastHash = data.hash;
+          updateCounts();
+          addMsg('assistant', `"${shorten(cmd.old)}" → "${shorten(cmd.new)}" 수정 완료`);
+        } else {
+          addMsg('assistant', '해당 텍스트를 찾을 수 없습니다. 정확한 원문을 입력해주세요.');
+        }
+      } else if (cmd.type === 'append') {
+        const content = editor.value + '\n\n' + cmd.text;
+        editor.value = content;
+        await saveContent();
+        addMsg('assistant', '맨 끝에 텍스트를 추가했습니다.');
+      } else if (cmd.type === 'insert_after') {
+        const idx = editor.value.indexOf(cmd.anchor);
+        if (idx === -1) {
+          addMsg('assistant', '기준 텍스트를 찾을 수 없습니다.');
+        } else {
+          const pos = idx + cmd.anchor.length;
+          editor.value = editor.value.substring(0, pos) + '\n\n' + cmd.text + editor.value.substring(pos);
+          await saveContent();
+          addMsg('assistant', `"${shorten(cmd.anchor)}" 뒤에 삽입 완료`);
+        }
+      }
+      if (mode === 'preview') renderPreview();
+    } else {
+      addMsg('assistant', processNatural(text));
+    }
+  } catch(e) {
+    addMsg('assistant', '오류: ' + e.message);
+  }
+  document.getElementById('chatSend').disabled = false;
+}
+
+function shorten(s) { return s.length > 30 ? s.substring(0, 30) + '...' : s; }
+
+function parseCommand(text) {
+  // Pattern: "A" → "B" or "A"를 "B"로
+  let m = text.match(/["“](.+?)["”]\s*[→→]\s*["“](.+?)["”]/);
+  if (m) return {type: 'replace', old: m[1], new: m[2]};
+
+  m = text.match(/["“](.+?)["”]\s*(?:를|을)\s*["“](.+?)["”]\s*(?:로|으로)\s*(?:수정|변경|바꿔|교체)/);
+  if (m) return {type: 'replace', old: m[1], new: m[2]};
+
+  m = text.match(/(?:수정|변경|바꿔|교체)\s*:\s*["“](.+?)["”]\s*[→→]\s*["“](.+?)["”]/);
+  if (m) return {type: 'replace', old: m[1], new: m[2]};
+
+  // Append: 끝에 추가: ...
+  m = text.match(/(?:끝에|마지막에|맨\s*끝에)\s*(?:추가|삽입)\s*[:：]\s*(.+)/s);
+  if (m) return {type: 'append', text: m[1].trim()};
+
+  // Insert after: "X" 뒤에 추가: ...
+  m = text.match(/["“](.+?)["”]\s*(?:뒤에|다음에|아래에)\s*(?:추가|삽입)\s*[:：]\s*(.+)/s);
+  if (m) return {type: 'insert_after', anchor: m[1], text: m[2].trim()};
+
+  return null;
+}
+
+function processNatural(text) {
+  return `명령을 인식하지 못했습니다. 다음 형식을 사용해주세요:
+
+• 바꾸기: "원문" → "수정문"
+• 바꾸기: "원문"을 "수정문"으로 수정
+• 끝에 추가: 추가할 텍스트
+• "기준텍스트" 뒤에 추가: 삽입할 텍스트`;
+}
+
+// Resize handle
+const handle = document.getElementById('resizeHandle');
+const leftPanel = document.getElementById('leftPanel');
+let isResizing = false;
+
+handle.addEventListener('mousedown', (e) => {
+  isResizing = true;
+  handle.classList.add('active');
+  document.addEventListener('mousemove', onResize);
+  document.addEventListener('mouseup', () => {
+    isResizing = false;
+    handle.classList.remove('active');
+    document.removeEventListener('mousemove', onResize);
+  }, {once: true});
+});
+
+function onResize(e) {
+  if (!isResizing) return;
+  const w = Math.max(250, Math.min(e.clientX, window.innerWidth - 400));
+  leftPanel.style.width = w + 'px';
+}
+
+// Poll for external changes
+async function pollChanges() {
+  try {
+    const res = await fetch('/api/hash');
+    const data = await res.json();
+    if (data.hash !== lastHash) {
+      const content = await (await fetch('/api/content')).json();
+      if (document.activeElement !== editor) {
+        editor.value = content.content;
+        lastHash = content.hash;
+        updateCounts();
+        if (mode === 'preview') renderPreview();
+      }
+    }
+  } catch(e) {}
+}
+
+// Init
+loadContent();
+setInterval(pollChanges, 3000);
+</script>
+</body>
+</html>
